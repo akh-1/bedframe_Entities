@@ -6,7 +6,8 @@
 	"description": "Translation layer that converts textured/custom server-side Polymer blocks and items to native Bedrock representations.",
 	"authors": [
 		"sylvxa",
-		"tomalbrc"
+		"tomalbrc",
+		"newlumberjack"
 	],
 	"contact": {
 		"homepage": "https://sylvie.lol/",
@@ -24,8 +25,8 @@
 		"bedframe.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.16.14",
-		"minecraft": ["1.21.9", "1.21.10"],
+		"fabricloader": ">=0.18.3",
+		"minecraft": "1.21.11",
 		"java": ">=21",
 		"fabric-api": "*",
 		"geyser-fabric": "*",
