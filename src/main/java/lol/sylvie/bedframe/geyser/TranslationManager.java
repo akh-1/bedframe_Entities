@@ -1,9 +1,14 @@
 package lol.sylvie.bedframe.geyser;
 
+import lol.sylvie.bedframe.geyser.translator.EntityTranslator;
 import lol.sylvie.bedframe.geyser.translator.BlockTranslator;
+import lol.sylvie.bedframe.geyser.translator.EquipmentTranslator;
+import lol.sylvie.bedframe.geyser.translator.FlipbookTranslator;
 import lol.sylvie.bedframe.geyser.translator.ItemTranslator;
+import lol.sylvie.bedframe.geyser.translator.SoundTranslator;
 import lol.sylvie.bedframe.util.BedframeConstants;
 import lol.sylvie.bedframe.util.ResourceHelper;
+import net.fabricmc.loader.api.FabricLoader;
 import org.geysermc.geyser.api.GeyserApi;
 import org.geysermc.geyser.api.event.EventBus;
 import org.geysermc.geyser.api.event.EventRegistrar;
@@ -29,9 +34,22 @@ public class TranslationManager implements EventRegistrar {
     public TranslationManager() {}
 
     public void registerHooks() {
+        // Detect Hydraulic so ItemTranslator can skip items it would double-register.
+        boolean hydraulicLoaded = FabricLoader.getInstance().isModLoaded("hydraulic");
+        if (hydraulicLoaded) {
+            BedframeConstants.LOGGER.info(
+                "Hydraulic detected - Bedframe ItemTranslator will only handle server-only mods " +
+                "and mods in BEDFRAME_FORCE_REGISTER_MODS that Hydraulic does not process"
+            );
+        }
+
         List<Translator> translators = List.of(
                 new BlockTranslator(),
-                new ItemTranslator()
+                new ItemTranslator(hydraulicLoaded),
+                new SoundTranslator(),
+                new EquipmentTranslator(),
+                new FlipbookTranslator(),
+                new EntityTranslator()
         );
 
         // Generate the fold

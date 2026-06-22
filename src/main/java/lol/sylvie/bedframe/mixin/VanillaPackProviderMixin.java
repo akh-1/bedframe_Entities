@@ -16,6 +16,14 @@ public class VanillaPackProviderMixin {
 	@ModifyExpressionValue(method = "lambda$clean$0", at = @At(value = "INVOKE", target = "Ljava/lang/String;startsWith(Ljava/lang/String;)Z"))
 	private static boolean bedframe$forceAddTextures(boolean original, @Local(name = "pathName") String name) {
 		if (!TranslationManager.INCLUDE_TEXTURE_HACK) return original;
-		return name.startsWith("/assets/minecraft/textures");
+		// Keep textures (already required for icon copying) AND model/blockstate JSONs.
+		// Without the JSONs, mod blocks that inherit from vanilla parents like
+		// minecraft:block/button or minecraft:block/inner_stairs cannot be stitched —
+		// resolveModel fails to find the parent and the converted model ends up empty,
+		// causing the dirt+question-mark placeholder.
+		return name.startsWith("/assets/minecraft/textures")
+			|| name.startsWith("/assets/minecraft/models")
+			|| name.startsWith("/assets/minecraft/blockstates")
+			|| name.startsWith("/assets/minecraft/items");
 	}
 }

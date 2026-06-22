@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "lol.sylvie.bedframe.mixin.factorytools",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "lol.sylvie.bedframe.mixin.factorytools.FactoryToolsMixinPlugin",
+  "mixins": [
+    "SimpleEntityModelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

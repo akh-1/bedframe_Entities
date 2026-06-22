@@ -6,13 +6,10 @@ import com.google.gson.JsonObject;
 import lol.sylvie.bedframe.util.*;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.Version;
-import net.minecraft.text.Text;
 import net.minecraft.util.Pair;
 import org.geysermc.pack.converter.util.NioDirectoryFileTreeReader;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.serialize.minecraft.MinecraftResourcePackReader;
-import xyz.nucleoid.server.translations.api.language.TranslationAccess;
-import xyz.nucleoid.server.translations.impl.ServerTranslations;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -103,20 +100,58 @@ public class PackGenerator {
         // TODO: I'm not sure if translations are even necessary
         JsonArray languages = new JsonArray();
 
+        // Collect all (bedrockKey -> javaKey) pairs, de-duplicating by bedrockKey.
+        // Block items intentionally re-emit "block.<ns>.<path>" (already added by
+        // BlockTranslator) so their display_name "%block.<ns>.<path>" resolves; without
+        // dedup that would write thousands of identical duplicate lines. Same key+value,
+        // so keeping the first occurrence is safe.
+        java.util.LinkedHashMap<String, String> keyMap = new java.util.LinkedHashMap<>();
+        translators.forEach(t -> {
+            for (Pair<String, String> p : t.getTranslations()) {
+                keyMap.putIfAbsent(p.getLeft(), p.getRight());
+            }
+        });
         ArrayList<Pair<String, String>> allKeys = new ArrayList<>();
-        translators.forEach(t -> allKeys.addAll(t.getTranslations()));
+        keyMap.forEach((left, right) -> allKeys.add(new Pair<>(left, right)));
 
-        TranslationHelper.LANGUAGES.forEach((code) -> {
-            try (FileWriter writer = new FileWriter(textsDir.resolve(code + ".lang").toFile())) {
+        // Every mod namespace that contributes a translation. Bounds language
+        // discovery to mods that actually shipped content into the pack.
+        java.util.LinkedHashSet<String> contributingNamespaces = new java.util.LinkedHashSet<>();
+        for (Pair<String, String> keyPair : allKeys) {
+            String ns = TranslationResolver.namespaceOf(keyPair.getRight());
+            if (ns != null) contributingNamespaces.add(ns);
+        }
+
+        // Discover which Bedrock languages to emit: en_US always, plus any candidate
+        // language at least one contributing mod actually ships. Each (javaCode →
+        // bedrockCode): the javaCode names the mod's source file (es_es.json), the
+        // bedrockCode names the output texts/<code>.lang and the languages.json entry.
+        java.util.LinkedHashMap<String, String> langs =
+            TranslationResolver.discoverLanguages(contributingNamespaces);
+
+        // Note: advancement titles/descriptions are intentionally NOT emitted here.
+        // Geyser resolves advancement text server-side via MinecraftLocale (vanilla
+        // only), not against this pack's .lang, so writing advancement keys here had
+        // no effect on Bedrock clients. Localizing advancements needs a server-side
+        // path (Server Translations API), out of scope for the pack generator.
+        langs.forEach((javaCode, bedrockCode) -> {
+            try (FileWriter writer = new FileWriter(textsDir.resolve(bedrockCode + ".lang").toFile())) {
                 for (Pair<String, String> keyPair : allKeys) {
-                    writer.write(keyPair.getLeft() + "=" + Text.translatable(keyPair.getRight()).getString() + "\n");
+                    writer.write(keyPair.getLeft() + "=" +
+                        TranslationResolver.resolve(keyPair.getRight(), javaCode) + "\n");
                 }
             } catch (IOException e) {
-                BedframeConstants.LOGGER.error("Couldn't write language file");
+                BedframeConstants.LOGGER.error("Couldn't write language file for {}", bedrockCode);
             }
 
-            languages.add(code);
+            languages.add(bedrockCode);
+            BedframeConstants.LOGGER.info(
+                "Bedframe: wrote {} ({}) — {} names",
+                bedrockCode, javaCode, allKeys.size());
         });
+        BedframeConstants.LOGGER.info(
+            "Bedframe: emitted {} language(s) from {} mod namespaces",
+            langs.size(), contributingNamespaces.size());
         writeJsonToFile(languages, textsDir.resolve("languages.json").toFile());
 
         Optional<String> icon = METADATA.getIconPath(512);

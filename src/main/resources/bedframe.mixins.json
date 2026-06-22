@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BlockResourceCreatorAccessor",
+    "carrier.SpawnPacketCarrierMixin",
     "CustomBlockRegistryPopulatorMixin",
     "CustomItemRegistryPopulatorMixin",
     "ElementRotationMixin",
@@ -12,6 +13,7 @@
     "PolymerItemMixin",
     "PolymerItemUtilsMixin",
     "PolymerResourcePackUtilsMixin",
+    "RegistrySyncManagerMixin",
     "VanillaPackProviderMixin"
   ],
   "injectors": {

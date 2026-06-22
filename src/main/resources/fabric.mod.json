@@ -22,7 +22,8 @@
 		]
 	},
 	"mixins": [
-		"bedframe.mixins.json"
+		"bedframe.mixins.json",
+		"bedframe-factorytools.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.18.3",
