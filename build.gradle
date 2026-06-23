@@ -75,6 +75,10 @@ dependencies {
 	modImplementation "eu.pb4:polymer-core:${project.polymer_version}"
 	modImplementation "eu.pb4:polymer-blocks:${project.polymer_version}"
 	modImplementation "eu.pb4:polymer-resource-pack:${project.polymer_version}"
+	modCompileOnly "eu.pb4:polymer-virtual-entity:${polymer_version}"
+
+    //blockbench lib.
+	modCompileOnly files('libs/blockbench-import-library-2.0.2+1.21.11.jar')
 
 	// Server-Translations
 	modImplementation "xyz.nucleoid:server-translations-api:${project.server_translations_version}"
