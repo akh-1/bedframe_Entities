@@ -57,6 +57,10 @@ public class PackGenerator {
         // TODO: Maybe generate this based on the mod list?
         // It seems like bedrock uses UUID to cache resource packs
         String versionIdentifier = METADATA.getId() + "-" + METADATA.getVersion().getFriendlyString();
+        // Fold the user's animation overrides into the UUID: when those files change, the UUID
+        // changes and Bedrock re-downloads the pack on next join. Unchanged folder -> same UUID.
+        String animHash = lol.sylvie.bedframe.geyser.model.AnimationOverrideHub.contentHash();
+        if (!animHash.isEmpty()) versionIdentifier += "-anim" + animHash;
         boolean shouldRandomize = FabricLoader.getInstance().isDevelopmentEnvironment();
 
         // Manifest

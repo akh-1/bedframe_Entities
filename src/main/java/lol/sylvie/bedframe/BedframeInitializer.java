@@ -11,6 +11,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.metadata.Person;
 import org.geysermc.pack.converter.util.DefaultLogListener;
 import org.geysermc.pack.converter.util.VanillaPackProvider;
+import lol.sylvie.bedframe.geyser.model.AnimationOverrideHub;
 import lol.sylvie.bedframe.geyser.EntityPropertyPusher;
 
 import java.nio.file.Path;
@@ -29,6 +30,7 @@ public class BedframeInitializer implements ModInitializer {
 			manager.registerHooks();
 		});
 		EntityPropertyPusher.init();
+		AnimationOverrideHub.ensureScaffold();
 
 		PolymerResourcePackUtils.RESOURCE_PACK_AFTER_INITIAL_CREATION_EVENT.register(resourcePackBuilder -> {
 			// Snapshot JSON/mcmeta here (fileMap is fully populated but the async build

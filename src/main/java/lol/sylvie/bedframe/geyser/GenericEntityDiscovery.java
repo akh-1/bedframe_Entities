@@ -2,6 +2,7 @@ package lol.sylvie.bedframe.geyser;
 
 import lol.sylvie.bedframe.api.BedframeEntities;
 import lol.sylvie.bedframe.api.BedframeEntities.Carrier;
+import lol.sylvie.bedframe.geyser.model.AnimationOverrideHub;
 import lol.sylvie.bedframe.geyser.model.BbAnimationConverter;
 import lol.sylvie.bedframe.geyser.model.BbModelConverter;
 import com.google.gson.JsonObject;
@@ -116,6 +117,11 @@ public final class GenericEntityDiscovery {
                                     clips.size(), id, clips);
                         }
                     }
+
+                    // User overrides from config/bedframe/animations/<ns>/<entity>.animation.json win last.
+                    AnimationOverrideHub.Result ov = AnimationOverrideHub.apply(id, animationsJson, clips);
+                    animationsJson = ov.animationsJson();
+                    clips = ov.clips().isEmpty() ? null : ov.clips();
 
                     BedframeEntities.registerAnimated(type, carrier, c.geometryId(), c.geometryJson(),
                             c.texturePng(), animationsJson, clips);

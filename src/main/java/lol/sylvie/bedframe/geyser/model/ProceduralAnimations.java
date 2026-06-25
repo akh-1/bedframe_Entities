@@ -11,9 +11,9 @@ import java.util.List;
  * {@code setupAnim} using sin/cos over walkAnimation + tickCount), not Blockbench keyframe data.
  * These cannot be auto-converted like Tom's Mobs; each model's math is translated to Molang.
  *
- * The output is a normal Bedrock .animation.json with ONE looping clip ("proc") whose bone
- * rotations are Molang EXPRESSIONS (re-evaluated every frame) rather than time keyframes. That
- * single query-driven clip reproduces idle + walk (+ air flap) at once, so the EntityTranslator
+ * The output is a normal Bedrock .animation.json whose bone rotations are Molang EXPRESSIONS
+ * (re-evaluated every frame) rather than time keyframes. genericWalk emits a "walk" clip and
+ * genericSwim a "swim" clip, each self-gated by query state (movement / in-water), so the
  * wires it as a single always-on, variant-gated controller.
  *
  * <h3>Java -> Molang conversion rules</h3>
@@ -35,14 +35,11 @@ import java.util.List;
 public final class ProceduralAnimations {
     private ProceduralAnimations() {}
 
-    /** The single clip name used for procedural animations. Not idle/walk/run/swim/fly on purpose,
-     *  so EntityTranslator wires it as one always-on state instead of a speed state machine. */
-    public static final List<String> CLIPS = List.of("proc");
-
     // Reusable Molang fragments.
-    private static final String AMT   = "math.clamp(query.modified_move_speed, 0, 1)";
-    private static final String COS   = "math.cos(query.modified_distance_moved * 38.17)";
+    private static final String AMT    = "math.clamp(query.modified_move_speed, 0, 1)";
+    private static final String COS    = "math.cos(query.modified_distance_moved * 38.17)";
     private static final String COS180 = "math.cos(query.modified_distance_moved * 38.17 + 180)";
+    private static final String WATER  = "query.is_in_water";
 
     /**
      * Generic locomotion driven purely by bone NAMES - no per-model code. Any bone whose name
@@ -74,7 +71,28 @@ public final class ProceduralAnimations {
             bones.add(bone, rot(phaseA ? swingA : swingB, 0, 0));
         }
         if (bones.size() == 0) return null;
-        return wrap(ns, path, bones);
+        return wrap(ns, path, "walk", bones);
+    }
+
+    /**
+     * Generic swim, by bone NAMES. Any bone containing "tail", "fin" or "flipper" gets a yaw
+     * undulation, gated by {@code query.is_in_water} so it only moves underwater. Successive
+     * tail/fin bones lag in phase to read as a travelling wave. Returns null if nothing swim-like
+     * is found. The controller wires the "swim" clip as the locomotion state for mobs that have
+     * no "walk" (e.g. fish); for legged + tailed mobs walk takes precedence.
+     */
+    public static String genericSwim(String ns, String path, java.util.List<String> boneNames) {
+        JsonObject bones = new JsonObject();
+        int seg = 0;
+        for (String bone : boneNames) {
+            String n = bone.toLowerCase();
+            if (!(n.contains("tail") || n.contains("fin") || n.contains("flipper"))) continue;
+            int phase = seg++ * 45;   // each further segment lags -> wave
+            String yaw = "(25 * math.sin(query.life_time * 540 + " + phase + ") * " + WATER + ")";
+            bones.add(bone, rot(0, yaw, 0));
+        }
+        if (bones.size() == 0) return null;
+        return wrap(ns, path, "swim", bones);
     }
 
     private static JsonObject rot(Object x, Object y, Object z) {
@@ -106,10 +124,10 @@ public final class ProceduralAnimations {
         return out.toString();
     }
 
-    /** Single-clip file using the standard "proc" clip name. */
-    private static String wrap(String ns, String path, JsonObject bones) {
+    /** Single-clip file with the given clip name (walk/swim/...). */
+    private static String wrap(String ns, String path, String clipName, JsonObject bones) {
         JsonObject clips = new JsonObject();
-        clips.add("animation.bedframe." + ns + "." + path + ".proc", clip(bones));
+        clips.add("animation.bedframe." + ns + "." + path + "." + clipName, clip(bones));
         return file(clips);
     }
 }

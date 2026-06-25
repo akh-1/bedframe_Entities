@@ -3,6 +3,7 @@ package lol.sylvie.bedframe.geyser;
 import lol.sylvie.bedframe.api.BedframeEntities;
 import lol.sylvie.bedframe.api.BedframeEntities.Carrier;
 import lol.sylvie.bedframe.geyser.model.BbModelConverter.Converted;
+import lol.sylvie.bedframe.geyser.model.AnimationOverrideHub;
 import lol.sylvie.bedframe.geyser.model.EmuAnimationConverter;
 import lol.sylvie.bedframe.geyser.model.EmuModelConverter;
 import lol.sylvie.bedframe.geyser.model.ProceduralAnimations;
@@ -50,11 +51,6 @@ public final class FactoryToolsDiscovery {
     /** Registries handled by a specialised discovery instead (ChocoCraft composites its textures). */
     private static final Set<String> SKIP_CLASSES = Set.of();
 
-    /** Procedural locomotion: generic bone-name-driven walk for any mob with conventionally named
-     *  legs. (The private build can special-case non-leg movers here.) */
-    private static String proceduralFor(String ns, String type, java.util.List<String> boneNames) {
-        return ProceduralAnimations.genericWalk(ns, type, boneNames);
-    }
 
     /** Merge two Bedrock animation files (walk + declaratives) into one "animations" object. */
     private static String mergeAnimations(String a, String b) {
@@ -201,16 +197,25 @@ public final class FactoryToolsDiscovery {
                     } catch (Throwable t) { sConvFail++; continue; }   // emuvanilla v1 / unconvertible
                 }
 
-                String walkJson = proceduralFor(ns, seg[1], boneNamesOf(conv.geometryJson()));
+                java.util.List<String> boneNames = boneNamesOf(conv.geometryJson());
+                String walkJson = ProceduralAnimations.genericWalk(ns, seg[1], boneNames);
+                String swimJson = ProceduralAnimations.genericSwim(ns, seg[1], boneNames);
                 EmuAnimationConverter.Converted decl = EmuAnimationConverter.fromModel(ns, seg[1], instance);
 
                 java.util.List<String> clips = new java.util.ArrayList<>();
-                if (walkJson != null) clips.addAll(ProceduralAnimations.CLIPS);
+                if (walkJson != null) clips.add("walk");
+                if (swimJson != null) clips.add("swim");
                 if (decl != null) {
                     clips.addAll(decl.clips());
                     LOGGER.info("[bedframe] {} declarative clip(s) for {}: {}", decl.clips().size(), typeId, decl.clips());
                 }
-                String animJson = mergeAnimations(walkJson, decl == null ? null : decl.animationsJson());
+                String animJson = mergeAnimations(walkJson, swimJson);
+                animJson = mergeAnimations(animJson, decl == null ? null : decl.animationsJson());
+
+                // User overrides from config/bedframe/animations/<ns>/<entity>.animation.json win last.
+                AnimationOverrideHub.Result ov = AnimationOverrideHub.apply(typeId, animJson, clips);
+                animJson = ov.animationsJson();
+                clips = ov.clips();
 
                 int variant = BedframeEntities.registerAnimated(type, carrier, conv.geometryId(),
                         conv.geometryJson(), png, animJson, clips.isEmpty() ? null : clips);

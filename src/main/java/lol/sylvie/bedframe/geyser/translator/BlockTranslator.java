@@ -316,7 +316,7 @@ public class BlockTranslator extends Translator {
         }
 
         // No patch produced geometry — return the primary (may be null or empty) so the
-        // caller can decide what to do (fall through to furniture / skip).
+        // caller can decide what to do (fall through to the item-model fallback / skip).
         return primary;
     }
 
@@ -666,7 +666,7 @@ public class BlockTranslator extends Translator {
                 int[] preResolvedRotation = null;
 
                 if (polymerBlockModels == null) {
-                    // Try reading the block's own blockstate JSON before falling back to furniture.
+                    // Try reading the block's own blockstate JSON before falling back to the item model.
                     // This covers PolymerBlock-patched vanilla blocks (Terrestria, etc.) that map
                     // to vanilla states and thus have no entry in Polymer's BlockResourceCreator map,
                     // but DO have their own assets accessible via the classloader.
@@ -731,11 +731,15 @@ public class BlockTranslator extends Translator {
                 // Resolve the model
                 Model blockModel;
                 if (usingItemModelFallback) {
-                    // Block uses Display Entities and has no resolvable Java block model.
-                    // The Filament/TSA furniture fallback has been removed, so there is
-                    // nothing left to render for these blocks — skip them.
-                    LOGGER.debug("Skipping display-entity block {} (no resolvable block model)", identifier);
-                    continue;
+                    // Block uses Display Entities — render it with its own item model
+                    // (assets/<ns>/models/item/<path>.json). The TSA/Filament furniture
+                    // category probe has been removed; this resolves the actual item model.
+                    blockModel = resolveModel(Identifier.of(identifier.getNamespace(), "item/" + identifier.getPath()));
+                    if (blockModel == null) {
+                        LOGGER.warn("No item model found for display-entity block {} — skipping", identifier);
+                        continue;
+                    }
+                    LOGGER.info("Display-entity fallback: rendering {} with its item model", identifier);
                 } else if (preResolvedModel != null) {
                     // Blockstate JSON path — model already resolved, pass it through
                     blockModel = preResolvedModel;
